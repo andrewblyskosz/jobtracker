@@ -263,19 +263,35 @@
     <div class="api-status" id="api-status"></div>
 
     <div style="border-top: 0.5px solid var(--border); margin-top: 1rem; padding-top: 1rem;">
-      <h2 style="margin-bottom: 8px;">Save data to file</h2>
-      <p class="api-note" style="margin-bottom: 10px;">Link a <strong>.json file</strong> on your PC so your sites survive cache clears and CCleaner. Works in Chrome &amp; Edge only.</p>
+      <h2 style="margin-bottom: 8px;">Save data to file <span style="font-size:10px;font-weight:400;opacity:0.6">(Chrome/Edge only)</span></h2>
+      <p class="api-note" style="margin-bottom: 10px;">Link a <strong>.json file</strong> on your PC so your sites survive cache clears.</p>
       <div style="display:flex; gap:8px;">
         <button onclick="pickSaveFile()">Set save file…</button>
         <button id="grant-access-btn" style="display:none" onclick="grantFileAccess()">Grant access</button>
       </div>
       <div class="api-status" id="file-status" style="margin-top:8px;"></div>
     </div>
+
+    <div style="border-top: 0.5px solid var(--border); margin-top: 1rem; padding-top: 1rem;">
+      <h2 style="margin-bottom: 8px;">JSONBin Cloud Sync &#9729; <span style="font-size:10px;font-weight:400;color:#0a9e50">Recommended</span></h2>
+      <p class="api-note" style="margin-bottom: 10px;">Store your data on <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> so it loads automatically on any browser or device. Create a free account, then paste your Master Key and Bin ID below.</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input type="password" id="jb-key-input" placeholder="JSONBin Master Key  (X-Master-Key)" autocomplete="off" />
+        <input type="text" id="jb-bin-input" placeholder="Bin ID  (e.g. 6628f3e6acd3cb34a8497e2c)" autocomplete="off" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveJsonBinSettings()">Save JSONBin settings</button>
+          <button onclick="createNewBin()">Create new bin</button>
+          <button onclick="syncFromJsonBin()">Load from JSONBin</button>
+        </div>
+      </div>
+      <div class="api-status" id="jb-status" style="margin-top:8px;"></div>
+    </div>
   </div>
 
   <div class="file-bar">
-    <button class="file-bar-btn" onclick="loadDataFile()">&#128194; Load saved file</button>
+    <button class="file-bar-btn" onclick="loadDataFile()">&#128194; Load local file</button>
     <button class="file-bar-btn" onclick="saveDataFileNow()">&#128190; Save data now</button>
+    <button class="file-bar-btn" onclick="syncFromJsonBin()" title="Load from JSONBin cloud">&#9729; Load from cloud</button>
     <span class="file-bar-status" id="file-bar-status">No file linked</span>
   </div>
 
@@ -330,6 +346,125 @@
   let sites = [];
   let results = [];
   let scanning = false;
+
+  // ── JSONBin Cloud Sync ──────────────────────────────────────────────
+  function getJsonBinSettings() {
+    return {
+      key: localStorage.getItem('jt-jb-key') || '',
+      binId: localStorage.getItem('jt-jb-bin') || ''
+    };
+  }
+
+  function updateJbStatus(msg, ok) {
+    const el = document.getElementById('jb-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'api-status ' + (ok ? 'set' : 'unset');
+  }
+
+  function saveJsonBinSettings() {
+    const key = document.getElementById('jb-key-input').value.trim();
+    const binId = document.getElementById('jb-bin-input').value.trim();
+    if (!key || !binId) { alert('Please enter both your Master Key and Bin ID.'); return; }
+    localStorage.setItem('jt-jb-key', key);
+    localStorage.setItem('jt-jb-bin', binId);
+    updateJbStatus('✓ JSONBin settings saved. Syncing…', true);
+    syncToJsonBin();
+  }
+
+  async function createNewBin() {
+    const key = document.getElementById('jb-key-input').value.trim();
+    if (!key) { alert('Please enter your Master Key first.'); return; }
+    updateJbStatus('Creating new bin…', true);
+    try {
+      const res = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': key,
+          'X-Bin-Name': 'JobTracker',
+          'X-Private': 'true'
+        },
+        body: JSON.stringify({ sites, results, apiKey: localStorage.getItem('jt-apikey') || '' })
+      });
+      const data = await res.json();
+      if (data.metadata && data.metadata.id) {
+        const binId = data.metadata.id;
+        localStorage.setItem('jt-jb-key', key);
+        localStorage.setItem('jt-jb-bin', binId);
+        document.getElementById('jb-bin-input').value = binId;
+        updateJbStatus('✓ Bin created! ID: ' + binId + ' — Copy this ID somewhere safe.', true);
+        showToast('✓ JSONBin created: ' + binId);
+      } else {
+        updateJbStatus('Error creating bin: ' + JSON.stringify(data), false);
+      }
+    } catch(e) {
+      updateJbStatus('Error: ' + e.message, false);
+    }
+  }
+
+  async function syncToJsonBin() {
+    const { key, binId } = getJsonBinSettings();
+    if (!key || !binId) return;
+    try {
+      const res = await fetch('https://api.jsonbin.io/v3/b/' + binId, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': key
+        },
+        body: JSON.stringify({ sites, results, apiKey: localStorage.getItem('jt-apikey') || '' })
+      });
+      const data = await res.json();
+      if (data.record) {
+        updateJbStatus('✓ Synced to JSONBin — ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), true);
+      } else {
+        console.error('JSONBin sync error:', data);
+      }
+    } catch(e) {
+      console.error('JSONBin sync failed:', e);
+    }
+  }
+
+  async function syncFromJsonBin() {
+    const { key, binId } = getJsonBinSettings();
+    if (!key || !binId) { alert('Please enter and save your JSONBin settings first.'); return; }
+    updateJbStatus('Loading from JSONBin…', true);
+    try {
+      const res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+        headers: { 'X-Master-Key': key }
+      });
+      const data = await res.json();
+      if (data.record) {
+        const rec = data.record;
+        if (rec.sites) sites = rec.sites.map(s => ({ ...s, full: s.full || 'https://' + s.domain }));
+        if (rec.results) results = rec.results;
+        if (rec.apiKey) {
+          localStorage.setItem('jt-apikey', rec.apiKey);
+          document.getElementById('api-key-input').value = rec.apiKey;
+          document.getElementById('api-status').textContent = 'API key saved.';
+          document.getElementById('api-status').className = 'api-status set';
+        }
+        renderSites();
+        if (results.length > 0) {
+          renderResults();
+          applyHighlight();
+          document.getElementById('clear-btn').style.display = '';
+          const hasErrors = sites.some(s => s.status === 'error');
+          document.getElementById('retry-errors-btn').style.display = hasErrors ? '' : 'none';
+          const hasMissed = sites.some(s => s.status === 'none' || s.status === 'error');
+          document.getElementById('retry-btn').style.display = hasMissed ? '' : 'none';
+        }
+        updateJbStatus('✓ Loaded from JSONBin — ' + (rec.sites||[]).length + ' sites, ' + (rec.results||[]).length + ' results', true);
+        updateFileBarStatus('JSONBin (☁)');
+        showToast('✓ Loaded from JSONBin');
+      } else {
+        updateJbStatus('Error: ' + JSON.stringify(data), false);
+      }
+    } catch(e) {
+      updateJbStatus('Error: ' + e.message, false);
+    }
+  }
 
   // ── IndexedDB helpers for persisting the file handle ──────────────────
   function idbOpen() {
@@ -524,6 +659,7 @@
     await writeDataFile({ sites, results, apiKey: localStorage.getItem('jt-apikey') || '' });
     updateFileBarStatus(fileHandle.name);
     showToast('✓ Saved to ' + fileHandle.name);
+    syncToJsonBin();
   }
 
   async function pickSaveFile() {
@@ -622,6 +758,7 @@
   function saveSites() {
     saveSitesLocal();
     if (fileHandle) writeDataFile({ sites, results, apiKey: localStorage.getItem('jt-apikey') || '' });
+    syncToJsonBin();
   }
 
   // ── Load on startup ─────────────────────────────────────────────────
@@ -641,6 +778,19 @@
     } else {
       try { sites = JSON.parse(localStorage.getItem('jt-sites') || '[]'); } catch(e) { sites = []; }
       sites = sites.map(s => ({ ...s, full: s.full || 'https://' + s.domain }));
+    }
+
+    // Restore JSONBin settings to inputs
+    const jbKey = localStorage.getItem('jt-jb-key') || '';
+    const jbBin = localStorage.getItem('jt-jb-bin') || '';
+    if (jbKey) document.getElementById('jb-key-input').value = jbKey;
+    if (jbBin) document.getElementById('jb-bin-input').value = jbBin;
+
+    // Auto-load from JSONBin if configured (takes priority)
+    if (jbKey && jbBin) {
+      updateJbStatus('Auto-loading from JSONBin…', true);
+      await syncFromJsonBin();
+      return;
     }
 
     const key = localStorage.getItem('jt-apikey') || '';
