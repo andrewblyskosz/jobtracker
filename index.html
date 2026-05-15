@@ -276,7 +276,15 @@
 
   <div class="list-header">
     <span class="list-label">Watching <span id="site-count">0</span> site(s)</span>
-    <button onclick="markAllVisited()" style="font-size:12px;padding:5px 12px;">Mark all visited today</button>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <select id="sort-select" onchange="renderSites()" style="font-size:12px;padding:5px 8px;border-radius:6px;border:0.5px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;">
+        <option value="added">Sort: Date added</option>
+        <option value="name">Sort: Name A–Z</option>
+        <option value="visited">Sort: Last visited</option>
+        <option value="unvisited">Sort: Unvisited first</option>
+      </select>
+      <button onclick="markAllVisited()" style="font-size:12px;padding:5px 12px;">Mark all visited</button>
+    </div>
   </div>
 
   <div class="no-key-warn" id="no-key-warn">
@@ -435,6 +443,7 @@
   });
 
   function removeSite(domain) {
+    if (!confirm('Remove "' + domain + '" from your list?')) return;
     sites = sites.filter(s => s.domain !== domain);
     syncToJsonBin();
     renderSites();
@@ -489,6 +498,26 @@
     }
   }
 
+  function getSortedSites() {
+    const sel = document.getElementById('sort-select');
+    const sort = sel ? sel.value : 'added';
+    const sorted = [...sites];
+    if (sort === 'name') {
+      sorted.sort((a, b) => a.domain.localeCompare(b.domain));
+    } else if (sort === 'visited') {
+      sorted.sort((a, b) => (b.lastVisited || 0) - (a.lastVisited || 0));
+    } else if (sort === 'unvisited') {
+      sorted.sort((a, b) => {
+        if (!a.lastVisited && b.lastVisited) return -1;
+        if (a.lastVisited && !b.lastVisited) return 1;
+        return (a.addedAt || 0) - (b.addedAt || 0);
+      });
+    } else {
+      sorted.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+    }
+    return sorted;
+  }
+
   function renderSites() {
     const list = document.getElementById('site-list');
     document.getElementById('site-count').textContent = sites.length;
@@ -498,7 +527,8 @@
       return;
     }
 
-    list.innerHTML = sites.map(s => {
+    const sorted = getSortedSites();
+    list.innerHTML = sorted.map(s => {
       const faviconDomain = s.domain.split('/')[0];
       const escapedDomain = s.domain.replace(/'/g, "\\'");
       const bKey = btoa(s.domain).replace(/=/g,'');
@@ -508,7 +538,7 @@
         : null;
 
       const badge = visitedStr
-        ? `<span class="checked-badge" onclick="unmarkVisited('${escapedDomain}')" title="Click to unmark">Visited ${visitedStr}</span>`
+        ? `<span class="checked-badge" onclick="unmarkVisited('${escapedDomain}')" title="Click to clear visited date">&#10003; Visited ${visitedStr} &times;</span>`
         : `<button class="mark-btn" onclick="markVisited('${escapedDomain}')">Mark visited</button>`;
 
       return `<div class="site-item">
