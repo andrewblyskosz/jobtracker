@@ -156,37 +156,69 @@
   .list-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
   .site-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1.5rem; }
   .site-item {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; gap: 10px;
     background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 10px 12px;
-    transition: border-color 0.15s;
+    border-radius: var(--radius-lg); padding: 12px;
+    transition: border-color 0.15s; align-items: flex-start;
   }
   .site-item:hover { border-color: var(--border-strong); }
-  .site-favicon { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
-  .site-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .site-favicon { width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .site-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .site-url {
     font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    color: var(--text); text-decoration: none;
+    color: var(--text); text-decoration: none; font-weight: 500;
   }
   .site-url:hover { color: var(--accent); text-decoration: underline; }
   .site-checked { font-size: 11px; color: var(--text-3); }
   .site-note-text { font-size: 11px; color: var(--text-2); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mark-btn {
+
+  /* Badges area */
+  .site-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 3px 9px; border-radius: 99px;
+    white-space: nowrap; font-weight: 500;
+  }
+  .badge-visited { background: var(--success-bg); color: var(--success); cursor: pointer; }
+  .badge-visited:hover { filter: brightness(0.92); }
+  .badge-applied { background: #fff3cd; color: #7a5800; cursor: pointer; border: 0.5px solid rgba(122,88,0,0.2); }
+  @media (prefers-color-scheme: dark) {
+    .badge-applied { background: #3a2800; color: #f0c040; border-color: rgba(240,192,64,0.2); }
+  }
+  .badge-applied:hover { filter: brightness(0.92); }
+  .badge-x { font-size: 12px; opacity: 0.6; }
+
+  /* Action buttons row */
+  .site-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .action-btn {
     background: none; border: 0.5px solid var(--border-strong); padding: 4px 10px;
     cursor: pointer; color: var(--text-2); font-size: 11px; border-radius: 99px;
-    flex-shrink: 0; font-family: inherit; white-space: nowrap;
+    font-family: inherit; white-space: nowrap; transition: all 0.15s;
   }
-  .mark-btn:hover { background: var(--success-bg); border-color: var(--success); color: var(--success); }
-  .checked-badge {
-    font-size: 11px; padding: 3px 10px; border-radius: 99px; flex-shrink: 0;
-    background: var(--success-bg); color: var(--success); white-space: nowrap; cursor: pointer;
-  }
-  .checked-badge:hover { filter: brightness(0.9); }
+  .action-btn:hover { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+  .action-btn.apply-btn:hover { background: #fff3cd; border-color: #c09000; color: #7a5800; }
   .remove-btn {
     background: none; border: none; padding: 3px 5px; cursor: pointer;
     color: var(--text-3); font-size: 14px; border-radius: 4px; line-height: 1; flex-shrink: 0;
   }
   .remove-btn:hover { color: var(--danger); background: var(--danger-bg); }
+
+  /* Date picker popup */
+  .date-popup {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg); padding: 20px; z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25); min-width: 260px;
+  }
+  .date-popup.open { display: block; }
+  .date-popup h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  .date-popup input[type="date"] { width: 100%; margin-bottom: 10px; font-size: 14px; }
+  .date-popup-btns { display: flex; gap: 8px; }
+  .date-popup-btns button { flex: 1; padding: 8px; font-size: 13px; }
+  .date-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999;
+  }
+  .date-overlay.open { display: block; }
 
   .empty-state {
     text-align: center; padding: 2.5rem 1rem; color: var(--text-3); font-size: 14px;
@@ -194,10 +226,17 @@
   }
   .empty-state strong { display: block; margin-bottom: 4px; font-size: 15px; color: var(--text-2); }
 
-  /* ── Note editing ── */
-  .note-row { display: flex; gap: 6px; margin-top: 4px; }
+  /* Note editing */
+  .note-row { display: flex; gap: 6px; margin-top: 2px; }
   .note-input { font-size: 12px !important; padding: 4px 8px !important; }
   .note-save { font-size: 11px; padding: 4px 10px; }
+
+  /* Mobile */
+  @media (max-width: 500px) {
+    .site-actions { gap: 4px; }
+    .action-btn { padding: 5px 10px; font-size: 12px; }
+    .badge { font-size: 11px; padding: 4px 9px; }
+  }
 
   /* ── Toast ── */
   .toast {
@@ -295,6 +334,17 @@
 
 </div>
 
+<!-- Date picker popup -->
+<div class="date-overlay" id="date-overlay" onclick="closeDatePopup()"></div>
+<div class="date-popup" id="date-popup">
+  <h3 id="date-popup-title">Select date</h3>
+  <input type="date" id="date-picker-input" />
+  <div class="date-popup-btns">
+    <button class="primary" onclick="confirmDatePick()">Confirm</button>
+    <button onclick="closeDatePopup()">Cancel</button>
+  </div>
+</div>
+
 <script>
   let sites = [];
 
@@ -318,15 +368,16 @@
     el.className = 'file-bar-status' + (linked ? ' linked' : '');
   }
 
-  function saveJsonBinSettings() {
+  async function saveJsonBinSettings() {
     const key = document.getElementById('jb-key-input').value.trim();
     const binId = document.getElementById('jb-bin-input').value.trim();
     if (!key || !binId) { alert('Please enter both your Master Key and Bin ID.'); return; }
     localStorage.setItem('jt-jb-key', key);
     localStorage.setItem('jt-jb-bin', binId);
-    updateJbStatus('\u2713 Settings saved. Syncing\u2026', true);
-    syncToJsonBin();
-    showToast('\u2713 JSONBin settings saved');
+    updateJbStatus('\u2713 Settings saved. Loading your data\u2026', true);
+    // Always LOAD first — never overwrite the bin on first connect
+    await syncFromJsonBin();
+    showToast('\u2713 Connected to JSONBin');
   }
 
   async function createNewBin() {
@@ -449,22 +500,69 @@
     renderSites();
   }
 
-  function markVisited(domain) {
+  // ── Date picker ─────────────────────────────────────────────────────
+  let _datePick = { mode: null, domain: null, applyIdx: null };
+
+  function openDatePopup(mode, domain, applyIdx) {
+    _datePick = { mode, domain, applyIdx };
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date-picker-input').value = today;
+    document.getElementById('date-popup-title').textContent =
+      mode === 'visited' ? 'Date visited' : 'Date applied';
+    document.getElementById('date-overlay').classList.add('open');
+    document.getElementById('date-popup').classList.add('open');
+  }
+
+  function closeDatePopup() {
+    document.getElementById('date-overlay').classList.remove('open');
+    document.getElementById('date-popup').classList.remove('open');
+    _datePick = { mode: null, domain: null, applyIdx: null };
+  }
+
+  function confirmDatePick() {
+    const val = document.getElementById('date-picker-input').value;
+    if (!val) { closeDatePopup(); return; }
+    const ts = new Date(val + 'T12:00:00').getTime();
+    const { mode, domain, applyIdx } = _datePick;
     const s = sites.find(s => s.domain === domain);
-    if (s) {
-      s.lastVisited = Date.now();
-      syncToJsonBin();
-      renderSites();
+    if (!s) { closeDatePopup(); return; }
+
+    if (mode === 'visited') {
+      s.lastVisited = ts;
+    } else if (mode === 'apply') {
+      if (!s.applied) s.applied = [];
+      s.applied.push(ts);
+      s.applied.sort((a, b) => b - a);
+    } else if (mode === 'edit-apply' && applyIdx !== null) {
+      s.applied[applyIdx] = ts;
+      s.applied.sort((a, b) => b - a);
     }
+    closeDatePopup();
+    syncToJsonBin();
+    renderSites();
+  }
+
+  function markVisited(domain) {
+    openDatePopup('visited', domain, null);
   }
 
   function unmarkVisited(domain) {
+    if (!confirm('Clear the visited date for this site?')) return;
     const s = sites.find(s => s.domain === domain);
-    if (s) {
-      s.lastVisited = null;
-      syncToJsonBin();
-      renderSites();
-    }
+    if (s) { s.lastVisited = null; syncToJsonBin(); renderSites(); }
+  }
+
+  function addApplied(domain) {
+    openDatePopup('apply', domain, null);
+  }
+
+  function removeApplied(domain, idx) {
+    const s = sites.find(s => s.domain === domain);
+    if (!s || !s.applied) return;
+    if (!confirm('Remove this application date?')) return;
+    s.applied.splice(idx, 1);
+    syncToJsonBin();
+    renderSites();
   }
 
   function markAllVisited() {
@@ -533,13 +631,23 @@
       const escapedDomain = s.domain.replace(/'/g, "\\'");
       const bKey = btoa(s.domain).replace(/=/g,'');
 
-      const visitedStr = s.lastVisited
-        ? new Date(s.lastVisited).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'})
-        : null;
+      const fmt = ts => new Date(ts).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'});
 
-      const badge = visitedStr
-        ? `<span class="checked-badge" onclick="unmarkVisited('${escapedDomain}')" title="Click to clear visited date">&#10003; Visited ${visitedStr} &times;</span>`
-        : `<button class="mark-btn" onclick="markVisited('${escapedDomain}')">Mark visited</button>`;
+      // Visited badge
+      const visitedBadge = s.lastVisited
+        ? `<span class="badge badge-visited" onclick="unmarkVisited('${escapedDomain}')" title="Click to clear">&#10003; Visited ${fmt(s.lastVisited)} &times;</span>`
+        : '';
+
+      // Applied badges (stacked)
+      const appliedBadges = (s.applied || []).map((ts, i) =>
+        `<span class="badge badge-applied" onclick="removeApplied('${escapedDomain}', ${i})" title="Click to remove">&#9733; Applied ${fmt(ts)} &times;</span>`
+      ).join('');
+
+      // Action buttons
+      const visitBtn = !s.lastVisited
+        ? `<button class="action-btn" onclick="markVisited('${escapedDomain}')">&#10003; Mark visited</button>`
+        : '';
+      const applyBtn = `<button class="action-btn apply-btn" onclick="addApplied('${escapedDomain}')">&#9733; + Applied</button>`;
 
       return `<div class="site-item">
         <img class="site-favicon" src="https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32" onerror="this.style.display='none'" />
@@ -551,9 +659,14 @@
               : `<span class="site-checked" onclick="startEditNote('${escapedDomain}')" style="cursor:pointer;text-decoration:underline dotted">+ add note</span>`
             }
           </div>
+          <div class="site-badges">
+            ${visitedBadge}${appliedBadges}
+          </div>
+          <div class="site-actions">
+            ${visitBtn}${applyBtn}
+          </div>
         </div>
-        ${badge}
-        <button class="remove-btn" onclick="removeSite('${escapedDomain}')" title="Remove">&#x2715;</button>
+        <button class="remove-btn" onclick="removeSite('${escapedDomain}')" title="Remove site">&#x2715;</button>
       </div>`;
     }).join('');
   }
