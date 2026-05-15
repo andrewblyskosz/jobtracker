@@ -298,6 +298,7 @@
         <button onclick="saveJsonBinSettings()">Save settings</button>
         <button onclick="createNewBin()">Create new bin</button>
         <button onclick="syncFromJsonBin()">Load from cloud</button>
+        <button onclick="copyBookmarkUrl()" title="Copy a URL with your credentials embedded for easy bookmarking">&#128279; Copy bookmark URL</button>
       </div>
       <div class="api-status" id="jb-status"></div>
     </div>
@@ -690,14 +691,62 @@
   }
 
   // ── Load on startup ──────────────────────────────────────────────────
-  async function loadAll() {
+  function getHashParams() {
+    const hash = window.location.hash.slice(1);
+    const params = {};
+    hash.split('&').forEach(part => {
+      const [k, v] = part.split('=');
+      if (k && v) params[decodeURIComponent(k)] = decodeURIComponent(v);
+    });
+    return params;
+  }
+
+  function copyBookmarkUrl() {
     const key = localStorage.getItem('jt-jb-key') || '';
     const binId = localStorage.getItem('jt-jb-bin') || '';
+    if (!key || !binId) { alert('Save your settings first before copying the bookmark URL.'); return; }
+    const base = 'https://andrewblyskosz.github.io/jobtracker/';
+    const url = base + '#key=' + encodeURIComponent(key) + '&bin=' + encodeURIComponent(binId);
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('\u2713 Bookmark URL copied — paste it into any browser!');
+      updateJbStatus('\u2713 Bookmark URL copied to clipboard', true);
+    }).catch(() => {
+      prompt('Copy this URL and bookmark it:', url);
+    });
+  }
+
+  function buildBookmarkUrl() {
+    const key = localStorage.getItem('jt-jb-key') || '';
+    const binId = localStorage.getItem('jt-jb-bin') || '';
+    if (!key || !binId) return null;
+    const base = window.location.origin + window.location.pathname;
+    return base + '#key=' + encodeURIComponent(key) + '&bin=' + encodeURIComponent(binId);
+  }
+
+  async function loadAll() {
+    // Check URL hash for credentials first
+    const hash = getHashParams();
+    let key = hash.key || localStorage.getItem('jt-jb-key') || '';
+    let binId = hash.bin || localStorage.getItem('jt-jb-bin') || '';
+
+    // If credentials came from URL hash, save them locally
+    if (hash.key && hash.bin) {
+      localStorage.setItem('jt-jb-key', hash.key);
+      localStorage.setItem('jt-jb-bin', hash.bin);
+      // Clean the URL so key isn't visible in browser history
+      history.replaceState(null, '', window.location.pathname);
+    }
+
     if (key) document.getElementById('jb-key-input').value = key;
     if (binId) document.getElementById('jb-bin-input').value = binId;
 
     if (key && binId) {
       await syncFromJsonBin();
+      // Show bookmark URL hint after successful load
+      const bookmarkUrl = buildBookmarkUrl();
+      if (bookmarkUrl && hash.key) {
+        showToast('\u2713 Connected! Bookmark this page now.');
+      }
     } else {
       updateBarStatus('Open Settings to connect JSONBin', false);
       renderSites();
