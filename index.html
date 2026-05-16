@@ -859,19 +859,34 @@
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head><title>Job Tracker Export — ${now}</title>
     <style>
-      body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; color: #000; font-size: 14px; }
-      h1 { font-size: 22px; margin-bottom: 4px; color: #000; }
-      .meta { color: #000; font-size: 12px; margin-bottom: 28px; font-weight: 500; }
-      table { width: 100%; border-collapse: collapse; }
-      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid #000; }
-      td { color: #000; }
-      tr:hover { filter: brightness(0.97); }
-      a { color: #000 !important; font-weight: 600; }
-      @media print { body { margin: 20px; } }
+      @page { size: A4 landscape; margin: 15mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; color: #000; font-size: 12px; margin: 0; padding: 20px; }
+      h1 { font-size: 20px; margin-bottom: 4px; color: #000; }
+      .meta { color: #000; font-size: 11px; margin-bottom: 20px; font-weight: 500; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      col.col-site    { width: 34%; }
+      col.col-visited { width: 14%; }
+      col.col-applied { width: 14%; }
+      col.col-notes   { width: 38%; }
+      th { background: #1a3a5c; color: #fff; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid #000; word-break: break-word; }
+      td { color: #000; padding: 7px 10px; font-size: 11px; word-break: break-word; vertical-align: top; }
+      a { color: #000 !important; font-weight: 700; text-decoration: none; }
+      tr:nth-child(even):not([style*="background"]) { background: #f5f5f5; }
+      @media print {
+        body { padding: 0; }
+        @page { size: A4 landscape; margin: 15mm; }
+      }
     </style></head><body>
     <h1>Job Opportunity Tracker</h1>
     <p class="meta">by Andrew Blyskosz &nbsp;&middot;&nbsp; Exported ${now} &nbsp;&middot;&nbsp; ${sites.length} sites</p>
     <table>
+      <colgroup>
+        <col class="col-site" />
+        <col class="col-visited" />
+        <col class="col-applied" />
+        <col class="col-notes" />
+      </colgroup>
       <thead><tr>
         <th>Career Page</th>
         <th>Last Visited</th>
