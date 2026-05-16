@@ -876,7 +876,11 @@
       @media print {
         body { padding: 0; }
         @page { size: A4 landscape; margin: 15mm; }
+        tr { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        th { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       }
+      tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+      th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     </style></head><body>
     <h1>Job Opportunity Tracker</h1>
     <p class="meta">by Andrew Blyskosz &nbsp;&middot;&nbsp; Exported ${now} &nbsp;&middot;&nbsp; ${sites.length} sites</p>
