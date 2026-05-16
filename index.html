@@ -172,7 +172,7 @@
   }
   .site-url:hover { color: var(--accent); text-decoration: underline; }
   .site-checked { font-size: 11px; color: var(--text-3); }
-  .site-note-text { font-size: 11px; color: var(--text-2); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site-note-text { font-size: 11px; color: var(--text-2); font-style: italic; white-space: normal; line-height: 1.6; }
 
   /* Badges area */
   .site-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
@@ -199,6 +199,25 @@
   }
   .action-btn:hover { background: var(--success-bg); border-color: var(--success); color: var(--success); }
   .action-btn.apply-btn:hover { background: #fff3cd; border-color: #c09000; color: #7a5800; }
+
+  /* Site color swatches */
+  .color-picker-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+  .color-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; transition: transform 0.15s, border-color 0.15s; }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.active { border-color: var(--text); transform: scale(1.15); }
+  .color-swatch.clear { background: var(--surface2); border: 1.5px dashed var(--border-strong); font-size: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+
+  .site-color-none  { background: var(--surface); border-color: var(--border); }
+  .site-color-red   { background: #ffc8c8; border-color: rgba(180,32,32,0.7); }
+  .site-color-yellow{ background: #fff0a0; border-color: rgba(180,140,0,0.7); }
+  .site-color-green { background: #b0ecc8; border-color: rgba(30,120,60,0.7); }
+  .site-color-blue  { background: #bdd8ff; border-color: rgba(26,95,180,0.7); }
+  @media (prefers-color-scheme: dark) {
+    .site-color-red   { background: #4f1a1a; border-color: rgba(220,80,80,0.7); }
+    .site-color-yellow{ background: #423800; border-color: rgba(220,190,0,0.7); }
+    .site-color-green { background: #103d20; border-color: rgba(60,180,80,0.7); }
+    .site-color-blue  { background: #102648; border-color: rgba(80,140,240,0.7); }
+  }
   .remove-btn {
     background: none; border: none; padding: 3px 5px; cursor: pointer;
     color: var(--text-3); font-size: 14px; border-radius: 4px; line-height: 1; flex-shrink: 0;
@@ -285,6 +304,8 @@
   <div class="file-bar">
     <button class="file-bar-btn" onclick="syncFromJsonBin()">&#9729; Load from cloud</button>
     <button class="file-bar-btn" onclick="syncToJsonBinManual()">&#9729; Save to cloud</button>
+    <button class="file-bar-btn" onclick="exportPDF()">&#128438; Export PDF</button>
+    <button class="file-bar-btn" onclick="exportCSV()">&#128196; Export CSV</button>
     <span class="file-bar-status" id="file-bar-status">Not connected to JSONBin</span>
   </div>
 
@@ -335,6 +356,18 @@
 
   <div class="site-list" id="site-list"></div>
 
+</div>
+
+<!-- Note editor modal -->
+<div class="date-overlay" id="note-overlay" onclick="closeNoteModal()"></div>
+<div class="date-popup" id="note-modal" style="min-width:300px;width:90%;max-width:480px;">
+  <h3 id="note-modal-title">Notes</h3>
+  <textarea id="note-modal-input" rows="8" placeholder="Type your notes here&#10;&#10;Press Enter for a new line..." style="width:100%;margin-bottom:10px;font-family:inherit;font-size:14px;padding:10px;border-radius:8px;border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text);resize:vertical;line-height:1.6;"></textarea>
+  <div class="date-popup-btns">
+    <button class="primary" onclick="saveNoteModal()">Save</button>
+    <button onclick="clearNoteModal()" style="color:var(--danger);">Clear note</button>
+    <button onclick="closeNoteModal()">Cancel</button>
+  </div>
 </div>
 
 <!-- Date picker popup -->
@@ -520,6 +553,8 @@
     document.getElementById('date-overlay').classList.remove('open');
     document.getElementById('date-popup').classList.remove('open');
     _datePick = { mode: null, domain: null, applyIdx: null };
+    const clearBtn = document.getElementById('clear-date-btn');
+    if (clearBtn) clearBtn.remove();
   }
 
   function confirmDatePick() {
@@ -530,7 +565,7 @@
     const s = sites.find(s => s.domain === domain);
     if (!s) { closeDatePopup(); return; }
 
-    if (mode === 'visited') {
+    if (mode === 'visited' || mode === 'edit-visited') {
       s.lastVisited = ts;
     } else if (mode === 'apply') {
       if (!s.applied) s.applied = [];
@@ -550,9 +585,28 @@
   }
 
   function unmarkVisited(domain) {
-    if (!confirm('Clear the visited date for this site?')) return;
+    _datePick = { mode: 'edit-visited', domain, applyIdx: null };
     const s = sites.find(s => s.domain === domain);
-    if (s) { s.lastVisited = null; syncToJsonBin(); renderSites(); }
+    const existing = s && s.lastVisited
+      ? new Date(s.lastVisited).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    document.getElementById('date-picker-input').value = existing;
+    document.getElementById('date-popup-title').textContent = 'Update visited date';
+    // Add a clear button dynamically
+    const btns = document.querySelector('.date-popup-btns');
+    if (!document.getElementById('clear-date-btn')) {
+      const clearBtn = document.createElement('button');
+      clearBtn.id = 'clear-date-btn';
+      clearBtn.textContent = 'Clear';
+      clearBtn.onclick = () => {
+        const site = sites.find(s => s.domain === _datePick.domain);
+        if (site) { site.lastVisited = null; syncToJsonBin(); renderSites(); }
+        closeDatePopup();
+      };
+      btns.appendChild(clearBtn);
+    }
+    document.getElementById('date-overlay').classList.add('open');
+    document.getElementById('date-popup').classList.add('open');
   }
 
   function addApplied(domain) {
@@ -577,26 +631,52 @@
   }
 
   function startEditNote(domain) {
+    _noteDomain = domain;
     const s = sites.find(s => s.domain === domain);
-    const escapedDomain = domain.replace(/'/g, "\\'");
-    const noteRow = document.getElementById('note-row-' + btoa(domain).replace(/=/g,''));
-    if (!noteRow) return;
-    noteRow.innerHTML = `
-      <input type="text" class="note-input" id="note-inp-${btoa(domain).replace(/=/g,'')}" value="${s.note || ''}" placeholder="Add a note\u2026" />
-      <button class="note-save" onclick="saveNote('${escapedDomain}')">Save</button>
-      <button class="note-save" onclick="renderSites()">Cancel</button>`;
+    document.getElementById('note-modal-title').textContent = s.domain;
+    document.getElementById('note-modal-input').value = s.note || '';
+    document.getElementById('note-overlay').classList.add('open');
+    document.getElementById('note-modal').classList.add('open');
+    setTimeout(() => document.getElementById('note-modal-input').focus(), 100);
   }
 
-  function saveNote(domain) {
-    const key = btoa(domain).replace(/=/g,'');
-    const inp = document.getElementById('note-inp-' + key);
-    if (!inp) return;
-    const s = sites.find(s => s.domain === domain);
+  function saveNoteModal() {
+    if (!_noteDomain) return;
+    const s = sites.find(s => s.domain === _noteDomain);
     if (s) {
-      s.note = inp.value.trim();
+      s.note = document.getElementById('note-modal-input').value.trim();
       syncToJsonBin();
       renderSites();
     }
+    closeNoteModal();
+  }
+
+  function clearNoteModal() {
+    if (!confirm('Clear all notes for this site?')) return;
+    if (!_noteDomain) return;
+    const s = sites.find(s => s.domain === _noteDomain);
+    if (s) { s.note = ''; syncToJsonBin(); renderSites(); }
+    closeNoteModal();
+  }
+
+  function closeNoteModal() {
+    document.getElementById('note-overlay').classList.remove('open');
+    document.getElementById('note-modal').classList.remove('open');
+    _noteDomain = null;
+  }
+
+  function setColor(domain, color) {
+    const s = sites.find(s => s.domain === domain);
+    if (!s) return;
+    s.color = color;
+    syncToJsonBin();
+    renderSites();
+  }
+
+  let _noteDomain = null;
+
+  function saveNote(domain) {
+    // legacy stub — handled by modal now
   }
 
   function getSortedSites() {
@@ -652,14 +732,26 @@
         : '';
       const applyBtn = `<button class="action-btn apply-btn" onclick="addApplied('${escapedDomain}')">&#9733; + Applied</button>`;
 
-      return `<div class="site-item">
+      const colorClass = s.color ? 'site-color-' + s.color : 'site-color-none';
+      const colors = [
+        {val:'red',    bg:'#ef4444'},
+        {val:'yellow', bg:'#f59e0b'},
+        {val:'green',  bg:'#22c55e'},
+        {val:'blue',   bg:'#3b82f6'},
+      ];
+      const swatches = colors.map(c =>
+        `<span class="color-swatch ${s.color === c.val ? 'active' : ''}" style="background:${c.bg}" onclick="setColor('${escapedDomain}','${c.val}')" title="${c.val}"></span>`
+      ).join('') +
+        `<span class="color-swatch clear" onclick="setColor('${escapedDomain}','')" title="Clear color">✕</span>`;
+
+      return `<div class="site-item ${colorClass}">
         <img class="site-favicon" src="https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32" onerror="this.style.display='none'" />
         <div class="site-info">
           <a class="site-url" href="${s.full || 'https://' + s.domain}" target="_blank" rel="noopener" title="${s.full || s.domain}">${s.domain}</a>
-          <div id="note-row-${bKey}" class="note-row">
+          <div id="note-row-${bKey}" class="note-row" onclick="startEditNote('${escapedDomain}')" style="cursor:pointer;">
             ${s.note
-              ? `<span class="site-note-text" onclick="startEditNote('${escapedDomain}')" title="Click to edit note">&#128203; ${s.note}</span>`
-              : `<span class="site-checked" onclick="startEditNote('${escapedDomain}')" style="cursor:pointer;text-decoration:underline dotted">+ add note</span>`
+              ? `<span class="site-note-text" title="Click to edit note">&#128203; ${s.note.split('\n').map(l => l.trim()).filter(l => l).join('<br>&nbsp;&nbsp;&nbsp;')}</span>`
+              : `<span class="site-checked" style="text-decoration:underline dotted">+ add note</span>`
             }
           </div>
           <div class="site-badges">
@@ -667,6 +759,10 @@
           </div>
           <div class="site-actions">
             ${visitBtn}${applyBtn}
+          </div>
+          <div class="color-picker-row">
+            <span style="font-size:10px;color:var(--text-3);">Color:</span>
+            ${swatches}
           </div>
         </div>
         <button class="remove-btn" onclick="removeSite('${escapedDomain}')" title="Remove site">&#x2715;</button>
@@ -723,6 +819,86 @@
     if (!key || !binId) return null;
     const base = window.location.origin + window.location.pathname;
     return base + '#key=' + encodeURIComponent(key) + '&bin=' + encodeURIComponent(binId);
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'});
+  }
+
+  function colorLabel(c) {
+    const map = {red:'🔴 Red', yellow:'🟡 Yellow', green:'🟢 Green', blue:'🔵 Blue'};
+    return map[c] || '—';
+  }
+
+  function exportPDF() {
+    const now = new Date().toLocaleDateString('en-CA', {year:'numeric', month:'long', day:'numeric'});
+    const colorBg = {red:'#ffc8c8', yellow:'#fff0a0', green:'#b0ecc8', blue:'#bdd8ff', '':'#ffffff'};
+    const colorBorder = {red:'#b42020', yellow:'#b48a00', green:'#1e783c', blue:'#1a5fb4', '':'#dddddd'};
+
+    const rows = sites.map(s => {
+      const bg = colorBg[s.color || ''] || '#ffffff';
+      const border = colorBorder[s.color || ''] || '#dddddd';
+      const visited = fmtDate(s.lastVisited);
+      const applied = (s.applied || []).map(ts => fmtDate(ts)).join(', ') || '—';
+      const note = (s.note || '').replace(/\n/g, '<br>') || '—';
+      return `<tr style="background:${bg};">
+        <td style="border:1px solid ${border};padding:8px 12px;font-weight:600;font-size:13px;">
+          <a href="${s.full || 'https://'+s.domain}" style="color:#1a5fb4;text-decoration:none;">${s.domain}</a>
+        </td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;">${visited}</td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;">${applied}</td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#444;">${note}</td>
+      </tr>`;
+    }).join('');
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Job Tracker Export — ${now}</title>
+    <style>
+      body { font-family: -apple-system, Arial, sans-serif; max-width: 900px; margin: 40px auto; color: #111; font-size: 14px; }
+      h1 { font-size: 22px; margin-bottom: 4px; color: #0f3460; }
+      .meta { color: #888; font-size: 12px; margin-bottom: 28px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+      tr:hover { filter: brightness(0.97); }
+      @media print { body { margin: 20px; } a { color: #1a5fb4 !important; } }
+    </style></head><body>
+    <h1>Job Opportunity Tracker</h1>
+    <p class="meta">by Andrew Blyskosz &nbsp;&middot;&nbsp; Exported ${now} &nbsp;&middot;&nbsp; ${sites.length} sites</p>
+    <table>
+      <thead><tr>
+        <th>Career Page</th>
+        <th>Last Visited</th>
+        <th>Applied</th>
+        <th>Notes</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 400);
+  }
+
+  function exportCSV() {
+    const headers = ['Career Page', 'Full URL', 'Color', 'Last Visited', 'Applied Dates', 'Notes'];
+    const rows = sites.map(s => [
+      s.domain,
+      s.full || 'https://' + s.domain,
+      colorLabel(s.color || ''),
+      fmtDate(s.lastVisited),
+      (s.applied || []).map(ts => fmtDate(ts)).join(' | ') || '',
+      (s.note || '').replace(/\n/g, ' | ')
+    ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'job-tracker-' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('\u2713 CSV exported');
   }
 
   async function loadAll() {
