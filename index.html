@@ -345,6 +345,7 @@
         <option value="name">Sort: Name A–Z</option>
         <option value="visited">Sort: Last visited</option>
         <option value="unvisited">Sort: Unvisited first</option>
+        <option value="color">Sort: By color</option>
       </select>
       <button onclick="markAllVisited()" style="font-size:12px;padding:5px 12px;">Mark all visited</button>
     </div>
@@ -693,6 +694,9 @@
         if (a.lastVisited && !b.lastVisited) return 1;
         return (a.addedAt || 0) - (b.addedAt || 0);
       });
+    } else if (sort === 'color') {
+      const order = {red:0, yellow:1, green:2, blue:3, '':4};
+      sorted.sort((a, b) => (order[a.color||''] ?? 4) - (order[b.color||''] ?? 4));
     } else {
       sorted.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
     }
