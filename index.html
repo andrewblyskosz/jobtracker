@@ -838,30 +838,32 @@
 
     const rows = sites.map(s => {
       const bg = colorBg[s.color || ''] || '#ffffff';
-      const border = colorBorder[s.color || ''] || '#dddddd';
+      const border = colorBorder[s.color || ''] || '#000000';
       const visited = fmtDate(s.lastVisited);
       const applied = (s.applied || []).map(ts => fmtDate(ts)).join(', ') || '—';
       const note = (s.note || '').replace(/\n/g, '<br>') || '—';
       return `<tr style="background:${bg};">
-        <td style="border:1px solid ${border};padding:8px 12px;font-weight:600;font-size:13px;">
-          <a href="${s.full || 'https://'+s.domain}" style="color:#1a5fb4;text-decoration:none;">${s.domain}</a>
+        <td style="border:1px solid ${border};padding:8px 12px;font-weight:700;font-size:13px;">
+          <a href="${s.full || 'https://'+s.domain}" style="color:#000;text-decoration:none;">${s.domain}</a>
         </td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;">${visited}</td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;">${applied}</td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#444;">${note}</td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${visited}</td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${applied}</td>
+        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${note}</td>
       </tr>`;
     }).join('');
 
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head><title>Job Tracker Export — ${now}</title>
     <style>
-      body { font-family: -apple-system, Arial, sans-serif; max-width: 900px; margin: 40px auto; color: #111; font-size: 14px; }
-      h1 { font-size: 22px; margin-bottom: 4px; color: #0f3460; }
-      .meta { color: #888; font-size: 12px; margin-bottom: 28px; }
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; color: #000; font-size: 14px; }
+      h1 { font-size: 22px; margin-bottom: 4px; color: #000; }
+      .meta { color: #000; font-size: 12px; margin-bottom: 28px; font-weight: 500; }
       table { width: 100%; border-collapse: collapse; }
-      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #000; }
+      td { color: #000; }
       tr:hover { filter: brightness(0.97); }
-      @media print { body { margin: 20px; } a { color: #1a5fb4 !important; } }
+      a { color: #000 !important; font-weight: 600; }
+      @media print { body { margin: 20px; } }
     </style></head><body>
     <h1>Job Opportunity Tracker</h1>
     <p class="meta">by Andrew Blyskosz &nbsp;&middot;&nbsp; Exported ${now} &nbsp;&middot;&nbsp; ${sites.length} sites</p>
