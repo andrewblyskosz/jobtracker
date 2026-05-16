@@ -224,6 +224,25 @@
   }
   .remove-btn:hover { color: var(--danger); background: var(--danger-bg); }
 
+  /* Badge action menu */
+  .badge-menu {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: var(--surface); border: 2px solid var(--border-strong);
+    border-radius: var(--radius-lg); padding: 20px; z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25); min-width: 260px; width: 85%; max-width: 340px;
+  }
+  .badge-menu.open { display: flex; flex-direction: column; gap: 10px; }
+  .badge-menu-btn {
+    width: 100%; padding: 12px; font-size: 15px; font-family: inherit;
+    border-radius: var(--radius); border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text); cursor: pointer; text-align: center;
+  }
+  .badge-menu-btn:hover { background: var(--accent-bg); }
+  .badge-menu-btn.primary { background: #3d1a6e; color: #fff; border-color: transparent; font-weight: 600; }
+  .badge-menu-btn.primary:hover { filter: brightness(1.15); }
+  .badge-menu-btn.danger { color: var(--danger); border-color: var(--danger); }
+  .badge-menu-btn.danger:hover { background: var(--danger-bg); }
+
   /* Date picker popup */
   .date-popup {
     display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -369,6 +388,15 @@
     <button onclick="clearNoteModal()" style="color:var(--danger);">Clear note</button>
     <button onclick="closeNoteModal()">Cancel</button>
   </div>
+</div>
+
+<!-- Badge action menu -->
+<div class="date-overlay" id="badge-menu-overlay" onclick="closeBadgeMenu()"></div>
+<div class="badge-menu" id="badge-menu">
+  <p id="badge-menu-label" style="font-size:13px;color:var(--text-2);margin-bottom:14px;"></p>
+  <button class="badge-menu-btn primary" onclick="badgeMenuUpdate()">&#9998; Update date</button>
+  <button class="badge-menu-btn danger" onclick="badgeMenuDelete()">&#128465; Delete</button>
+  <button class="badge-menu-btn" onclick="closeBadgeMenu()">Cancel</button>
 </div>
 
 <!-- Date picker popup -->
@@ -533,6 +561,54 @@
   function removeSite(domain) {
     if (!confirm('Remove "' + domain + '" from your list?')) return;
     sites = sites.filter(s => s.domain !== domain);
+    syncToJsonBin();
+    renderSites();
+  }
+
+  // ── Badge action menu ───────────────────────────────────────────────
+  let _badgeMenu = { type: null, domain: null, applyIdx: null };
+
+  function badgeMenu(type, domain, applyIdx) {
+    _badgeMenu = { type, domain, applyIdx };
+    const s = sites.find(s => s.domain === domain);
+    const fmt = ts => new Date(ts).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'});
+    let label = '';
+    if (type === 'visited') {
+      label = 'Visited: ' + fmt(s.lastVisited);
+    } else {
+      label = 'Applied: ' + fmt(s.applied[applyIdx]);
+    }
+    document.getElementById('badge-menu-label').textContent = label;
+    document.getElementById('badge-menu-overlay').classList.add('open');
+    document.getElementById('badge-menu').classList.add('open');
+  }
+
+  function closeBadgeMenu() {
+    document.getElementById('badge-menu-overlay').classList.remove('open');
+    document.getElementById('badge-menu').classList.remove('open');
+    _badgeMenu = { type: null, domain: null, applyIdx: null };
+  }
+
+  function badgeMenuUpdate() {
+    const { type, domain, applyIdx } = _badgeMenu;
+    closeBadgeMenu();
+    if (type === 'visited') {
+      openDatePopup('edit-visited', domain, null);
+    } else {
+      openDatePopup('edit-apply', domain, applyIdx);
+    }
+  }
+
+  function badgeMenuDelete() {
+    const { type, domain, applyIdx } = _badgeMenu;
+    closeBadgeMenu();
+    const s = sites.find(s => s.domain === domain);
+    if (!s) return;
+    if (type === 'visited') {
+      s.lastVisited = null;
+    } else {
+      s.applied.splice(applyIdx, 1);
+    }
     syncToJsonBin();
     renderSites();
   }
@@ -722,12 +798,12 @@
 
       // Visited badge
       const visitedBadge = s.lastVisited
-        ? `<span class="badge badge-visited" onclick="unmarkVisited('${escapedDomain}')" title="Click to clear">&#10003; Visited ${fmt(s.lastVisited)} &times;</span>`
+        ? `<span class="badge badge-visited" onclick="badgeMenu('visited','${escapedDomain}',null)" title="Update or delete">&#10003; Visited ${fmt(s.lastVisited)}</span>`
         : '';
 
       // Applied badges (stacked)
       const appliedBadges = (s.applied || []).map((ts, i) =>
-        `<span class="badge badge-applied" onclick="removeApplied('${escapedDomain}', ${i})" title="Click to remove">&#9733; Applied ${fmt(ts)} &times;</span>`
+        `<span class="badge badge-applied" onclick="badgeMenu('applied','${escapedDomain}',${i})" title="Update or delete">&#9733; Applied ${fmt(ts)}</span>`
       ).join('');
 
       // Action buttons
