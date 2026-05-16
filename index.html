@@ -159,11 +159,11 @@
   .site-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1.5rem; }
   .site-item {
     display: flex; gap: 10px;
-    background: var(--surface); border: 0.5px solid var(--border);
+    background: var(--surface); border: 2px solid var(--border-strong);
     border-radius: var(--radius-lg); padding: 12px;
     transition: border-color 0.15s; align-items: flex-start;
   }
-  .site-item:hover { border-color: var(--border-strong); }
+  .site-item:hover { border-color: var(--accent); }
   .site-favicon { width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
   .site-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .site-url {
@@ -207,16 +207,16 @@
   .color-swatch.active { border-color: var(--text); transform: scale(1.15); }
   .color-swatch.clear { background: var(--surface2); border: 1.5px dashed var(--border-strong); font-size: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
 
-  .site-color-none  { background: var(--surface); border-color: var(--border); }
-  .site-color-red   { background: #ffc8c8; border-color: rgba(180,32,32,0.7); }
-  .site-color-yellow{ background: #fff0a0; border-color: rgba(180,140,0,0.7); }
-  .site-color-green { background: #b0ecc8; border-color: rgba(30,120,60,0.7); }
-  .site-color-blue  { background: #bdd8ff; border-color: rgba(26,95,180,0.7); }
+  .site-color-none  { background: var(--surface); border-color: var(--border-strong); }
+  .site-color-red   { background: #ffc8c8; border-color: #b42020; }
+  .site-color-yellow{ background: #fff0a0; border-color: #b48a00; }
+  .site-color-green { background: #b0ecc8; border-color: #1e783c; }
+  .site-color-blue  { background: #bdd8ff; border-color: #1a5fb4; }
   @media (prefers-color-scheme: dark) {
-    .site-color-red   { background: #4f1a1a; border-color: rgba(220,80,80,0.7); }
-    .site-color-yellow{ background: #423800; border-color: rgba(220,190,0,0.7); }
-    .site-color-green { background: #103d20; border-color: rgba(60,180,80,0.7); }
-    .site-color-blue  { background: #102648; border-color: rgba(80,140,240,0.7); }
+    .site-color-red   { background: #4f1a1a; border-color: #dc5050; }
+    .site-color-yellow{ background: #423800; border-color: #dcbe00; }
+    .site-color-green { background: #103d20; border-color: #3cb450; }
+    .site-color-blue  { background: #102648; border-color: #508cf0; }
   }
   .remove-btn {
     background: none; border: none; padding: 3px 5px; cursor: pointer;
@@ -847,12 +847,12 @@
       const applied = (s.applied || []).map(ts => fmtDate(ts)).join(', ') || '—';
       const note = (s.note || '').replace(/\n/g, '<br>') || '—';
       return `<tr style="background:${bg};">
-        <td style="border:1px solid ${border};padding:8px 12px;font-weight:700;font-size:13px;">
+        <td style="border:2px solid ${border};padding:8px 12px;font-weight:700;font-size:13px;">
           <a href="${s.full || 'https://'+s.domain}" style="color:#000;text-decoration:none;">${s.domain}</a>
         </td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${visited}</td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${applied}</td>
-        <td style="border:1px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${note}</td>
+        <td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${visited}</td>
+        <td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${applied}</td>
+        <td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${note}</td>
       </tr>`;
     }).join('');
 
@@ -863,7 +863,7 @@
       h1 { font-size: 22px; margin-bottom: 4px; color: #000; }
       .meta { color: #000; font-size: 12px; margin-bottom: 28px; font-weight: 500; }
       table { width: 100%; border-collapse: collapse; }
-      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #000; }
+      th { background: #1a3a5c; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid #000; }
       td { color: #000; }
       tr:hover { filter: brightness(0.97); }
       a { color: #000 !important; font-weight: 600; }
