@@ -840,7 +840,7 @@
     const colorBg = {red:'#ffc8c8', yellow:'#fff0a0', green:'#b0ecc8', blue:'#bdd8ff', '':'#ffffff'};
     const colorBorder = {red:'#b42020', yellow:'#b48a00', green:'#1e783c', blue:'#1a5fb4', '':'#dddddd'};
 
-    const rows = sites.map(s => {
+    const rows = getSortedSites().map(s => {
       const bg = colorBg[s.color || ''] || '#ffffff';
       const border = colorBorder[s.color || ''] || '#000000';
       const visited = fmtDate(s.lastVisited);
@@ -887,7 +887,7 @@
 
   function exportCSV() {
     const headers = ['Career Page', 'Full URL', 'Color', 'Last Visited', 'Applied Dates', 'Notes'];
-    const rows = sites.map(s => [
+    const rows = getSortedSites().map(s => [
       s.domain,
       s.full || 'https://' + s.domain,
       colorLabel(s.color || ''),
