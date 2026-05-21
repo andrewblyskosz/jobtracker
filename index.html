@@ -322,6 +322,7 @@ button.primary:hover { filter: brightness(1.15); }
   async function syncToJsonBin() {
     const { key, binId } = getJb();
     if (!key || !binId) return;
+    sites = getSortedSites();
     try {
       const res = await fetch('https://api.jsonbin.io/v3/b/' + binId, {
         method: 'PUT',
