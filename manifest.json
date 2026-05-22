@@ -2,7 +2,7 @@
   "name": "Job Opportunity Tracker",
   "short_name": "Job Tracker",
   "description": "Track animation studio career pages by Andrew Blyskosz",
-  "start_url": "/jobtracker/",
+  "start_url": "/jobtracker_Andrew/",
   "display": "standalone",
   "background_color": "#0f3460",
   "theme_color": "#3d1a6e",
