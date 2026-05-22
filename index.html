@@ -173,6 +173,7 @@ button.primary:hover { filter: brightness(1.15); }
       <p class="api-note" style="margin-bottom:10px;">Create a free account at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> then paste your Master Key below.</p>
       <input type="password" id="jb-key-input" placeholder="Master Key  (X-Master-Key)" autocomplete="off" style="margin-bottom:8px;" />
       <input type="text" id="jb-bin-input" placeholder="Bin ID  (auto-filled after Create)" autocomplete="off" style="margin-bottom:8px;" />
+      <input type="text" id="jb-bin-name-input" placeholder="Bin name  (e.g. Andrew Job Tracker)" autocomplete="off" style="margin-bottom:8px;" />
       <div class="btn-row">
         <button onclick="saveJsonBinSettings()">Save settings</button>
         <button onclick="createNewBin()">Create new bin</button>
@@ -304,11 +305,12 @@ button.primary:hover { filter: brightness(1.15); }
   async function createNewBin() {
     const key = document.getElementById('jb-key-input').value.trim();
     if (!key) { alert('Please enter your Master Key first.'); return; }
+    const binName = document.getElementById('jb-bin-name-input').value.trim() || 'JobTracker';
     updateJbStatus('Creating new bin\u2026', true);
     try {
       const res = await fetch('https://api.jsonbin.io/v3/b', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'JobTracker', 'X-Private': 'true' },
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': binName, 'X-Private': 'true' },
         body: JSON.stringify({ sites })
       });
       const data = await res.json();
