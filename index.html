@@ -171,7 +171,10 @@ button.primary:hover { filter: brightness(1.15); }
     <div class="settings-section">
       <span class="settings-label">JSONBin Cloud Storage &#9729;</span>
       <p class="api-note" style="margin-bottom:10px;">Create a free account at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> then paste your Master Key below.</p>
-      <input type="password" id="jb-key-input" placeholder="Master Key  (X-Master-Key)" autocomplete="off" style="margin-bottom:8px;" />
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="password" id="jb-key-input" placeholder="Master Key  (X-Master-Key)" autocomplete="off" style="flex:1;" />
+        <button onclick="toggleKeyVisibility()" id="key-toggle-btn" title="Show/hide key" style="flex-shrink:0;padding:8px 12px;font-size:13px;">&#128065; Show</button>
+      </div>
       <input type="text" id="jb-bin-input" placeholder="Bin ID  (auto-filled after Create)" autocomplete="off" style="margin-bottom:8px;" />
       <input type="text" id="jb-bin-name-input" placeholder="Bin name  (e.g. Andrew Job Tracker)" autocomplete="off" style="margin-bottom:8px;" />
       <div class="btn-row">
@@ -237,6 +240,18 @@ button.primary:hover { filter: brightness(1.15); }
     <button class="primary" onclick="saveRenameModal()">Save</button>
     <button onclick="clearRenameModal()" style="color:var(--danger);">Reset to URL</button>
     <button onclick="closeRenameModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Location modal -->
+<div class="date-overlay" id="location-overlay" onclick="closeLocationModal()"></div>
+<div class="date-popup" id="location-modal" style="min-width:300px;width:90%;max-width:420px;">
+  <h3 id="location-modal-title">&#127758; Location</h3>
+  <input type="text" id="location-input" placeholder="e.g. Toronto, ON  or  Remote" style="margin-bottom:10px;" />
+  <div class="date-popup-btns">
+    <button class="primary" onclick="saveLocationModal()">Save</button>
+    <button onclick="clearLocationModal()" style="color:var(--danger);">Clear</button>
+    <button onclick="closeLocationModal()">Cancel</button>
   </div>
 </div>
 
@@ -393,6 +408,7 @@ button.primary:hover { filter: brightness(1.15); }
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') addSite(); });
     document.getElementById('rename-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveRenameModal(); });
+    document.getElementById('location-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveLocationModal(); });
   });
   function removeSite(domain) {
     if (!confirm('Remove "' + domain + '" from your list?')) return;
@@ -558,6 +574,36 @@ button.primary:hover { filter: brightness(1.15); }
     document.getElementById('rename-modal').classList.remove('open');
     _renameDomain = null;
   }
+
+  // ── Location modal ───────────────────────────────────────────────────
+  let _locationDomain = null;
+  function openLocationModal(domain) {
+    _locationDomain = domain;
+    const s = sites.find(s => s.domain === domain);
+    document.getElementById('location-modal-title').textContent = '🌎 Location — ' + (s.label || domain);
+    document.getElementById('location-input').value = s.location || '';
+    document.getElementById('location-overlay').classList.add('open');
+    document.getElementById('location-modal').classList.add('open');
+    setTimeout(() => document.getElementById('location-input').focus(), 100);
+  }
+  function saveLocationModal() {
+    if (!_locationDomain) return;
+    const s = sites.find(s => s.domain === _locationDomain);
+    if (s) { s.location = document.getElementById('location-input').value.trim(); syncToJsonBin(); renderSites(); }
+    closeLocationModal();
+    showToast('\u2713 Location saved');
+  }
+  function clearLocationModal() {
+    if (!_locationDomain) return;
+    const s = sites.find(s => s.domain === _locationDomain);
+    if (s) { s.location = ''; syncToJsonBin(); renderSites(); }
+    closeLocationModal();
+  }
+  function closeLocationModal() {
+    document.getElementById('location-overlay').classList.remove('open');
+    document.getElementById('location-modal').classList.remove('open');
+    _locationDomain = null;
+  }
   function setColor(domain, color) {
     const s = sites.find(s => s.domain === domain);
     if (!s) return;
@@ -622,7 +668,12 @@ button.primary:hover { filter: brightness(1.15); }
       return `<div class="site-item ${colorClass}">
         <img class="site-favicon" src="https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32" onerror="this.style.display='none'" />
         <div class="site-info">
-          <a class="site-url" href="${s.full || 'https://' + s.domain}" target="_blank" rel="noopener" title="${s.full || s.domain}">${s.label || s.domain}</a>
+          <a class="site-url" href="${s.full || 'https://' + s.domain}" onclick="window.open(this.href,'_blank');return false;" rel="noopener" title="${s.full || s.domain}">${s.label || s.domain}</a>
+          <div class="note-row" onclick="openLocationModal('${escapedDomain}')" style="cursor:pointer;">
+            ${s.location
+              ? `<span class="site-note-text" title="Click to edit location">&#127758; ${s.location}</span>`
+              : `<span class="site-checked" style="text-decoration:underline dotted">&#127758; + add location</span>`}
+          </div>
           <div id="note-row-${bKey}" class="note-row" onclick="startEditNote('${escapedDomain}')" style="cursor:pointer;">
             ${s.note
               ? `<span class="site-note-text" title="Click to edit note">&#128203; ${s.note.split('\n').map(l => l.trim()).filter(l => l).join('<br>&nbsp;&nbsp;&nbsp;')}</span>`
@@ -640,6 +691,17 @@ button.primary:hover { filter: brightness(1.15); }
   }
 
   // ── Utilities ────────────────────────────────────────────────────────
+  function toggleKeyVisibility() {
+    const input = document.getElementById('jb-key-input');
+    const btn = document.getElementById('key-toggle-btn');
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.innerHTML = '&#128065; Hide';
+    } else {
+      input.type = 'password';
+      btn.innerHTML = '&#128065; Show';
+    }
+  }
   function toggleSettings() { document.getElementById('settings-panel').classList.toggle('open'); }
   function showToast(msg) {
     const existing = document.getElementById('toast');
