@@ -764,7 +764,7 @@ button.primary:hover { filter: brightness(1.15); }
     const hash = getHashParams();
     let key = hash.key || localStorage.getItem('jt-jb-key') || '';
     let binId = hash.bin || localStorage.getItem('jt-jb-bin') || '';
-    if (hash.key && hash.bin) { localStorage.setItem('jt-jb-key', hash.key); localStorage.setItem('jt-jb-bin', hash.bin); history.replaceState(null, '', window.location.pathname); }
+    if (hash.key && hash.bin) { localStorage.setItem('jt-jb-key', hash.key); localStorage.setItem('jt-jb-bin', hash.bin); }
     if (key) document.getElementById('jb-key-input').value = key;
     if (binId) document.getElementById('jb-bin-input').value = binId;
     if (key && binId) { await syncFromJsonBin(); if (hash.key) showToast('\u2713 Connected! Bookmark this page now.'); }
