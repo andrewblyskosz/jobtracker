@@ -203,6 +203,7 @@ button.primary:hover { filter: brightness(1.15); }
         <option value="name">Sort: Name A–Z</option>
         <option value="visited">Sort: Last visited</option>
         <option value="unvisited">Sort: Unvisited first</option>
+        <option value="applied">Sort: Last applied</option>
         <option value="color">Sort: By color</option>
       </select>
       <button id="reverse-btn" class="reverse-btn" onclick="toggleReverse()" title="Reverse sort order">&#8597; Reverse</button>
@@ -398,8 +399,8 @@ button.primary:hover { filter: brightness(1.15); }
     if (!raw) return;
     const parsed = cleanUrl(raw);
     if (!parsed) return;
-    if (sites.find(s => s.display === parsed.display)) { input.value = ''; return; }
-    sites.push({ domain: parsed.display, full: parsed.full, addedAt: Date.now(), lastVisited: null, note: '' });
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    sites.push({ id, domain: parsed.display, full: parsed.full, addedAt: Date.now(), lastVisited: null, note: '' });
     syncToJsonBin();
     renderSites();
     input.value = '';
@@ -410,18 +411,19 @@ button.primary:hover { filter: brightness(1.15); }
     document.getElementById('rename-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveRenameModal(); });
     document.getElementById('location-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveLocationModal(); });
   });
-  function removeSite(domain) {
-    if (!confirm('Remove "' + domain + '" from your list?')) return;
-    sites = sites.filter(s => s.domain !== domain);
+  function removeSite(id) {
+    const s = sites.find(s => s.id === id);
+    if (!confirm('Remove "' + (s ? (s.label || s.domain) : id) + '" from your list?')) return;
+    sites = sites.filter(s => s.id !== id);
     syncToJsonBin();
     renderSites();
   }
 
   // ── Badge action menu ────────────────────────────────────────────────
-  let _badgeMenu = { type: null, domain: null, applyIdx: null };
-  function badgeMenu(type, domain, applyIdx) {
-    _badgeMenu = { type, domain, applyIdx };
-    const s = sites.find(s => s.domain === domain);
+  let _badgeMenu = { type: null, id: null, applyIdx: null };
+  function badgeMenu(type, id, applyIdx) {
+    _badgeMenu = { type, id, applyIdx };
+    const s = sites.find(s => s.id === id);
     const fmt = ts => new Date(ts).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'});
     let label = type === 'visited' ? 'Visited: ' + fmt(s.lastVisited) : 'Applied: ' + fmt(s.applied[applyIdx]);
     document.getElementById('badge-menu-label').textContent = label;
@@ -431,17 +433,17 @@ button.primary:hover { filter: brightness(1.15); }
   function closeBadgeMenu() {
     document.getElementById('badge-menu-overlay').classList.remove('open');
     document.getElementById('badge-menu').classList.remove('open');
-    _badgeMenu = { type: null, domain: null, applyIdx: null };
+    _badgeMenu = { type: null, id: null, applyIdx: null };
   }
   function badgeMenuUpdate() {
-    const { type, domain, applyIdx } = _badgeMenu;
+    const { type, id, applyIdx } = _badgeMenu;
     closeBadgeMenu();
-    if (type === 'visited') { openDatePopup('edit-visited', domain, null); } else { openDatePopup('edit-apply', domain, applyIdx); }
+    if (type === 'visited') { openDatePopup('edit-visited', id, null); } else { openDatePopup('edit-apply', id, applyIdx); }
   }
   function badgeMenuDelete() {
-    const { type, domain, applyIdx } = _badgeMenu;
+    const { type, id, applyIdx } = _badgeMenu;
     closeBadgeMenu();
-    const s = sites.find(s => s.domain === domain);
+    const s = sites.find(s => s.id === id);
     if (!s) return;
     if (type === 'visited') { s.lastVisited = null; } else { s.applied.splice(applyIdx, 1); }
     syncToJsonBin();
@@ -449,9 +451,9 @@ button.primary:hover { filter: brightness(1.15); }
   }
 
   // ── Date picker ──────────────────────────────────────────────────────
-  let _datePick = { mode: null, domain: null, applyIdx: null };
-  function openDatePopup(mode, domain, applyIdx) {
-    _datePick = { mode, domain, applyIdx };
+  let _datePick = { mode: null, id: null, applyIdx: null };
+  function openDatePopup(mode, id, applyIdx) {
+    _datePick = { mode, id, applyIdx };
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date-picker-input').value = today;
     document.getElementById('date-popup-title').textContent = mode === 'visited' ? 'Date visited' : 'Date applied';
@@ -461,7 +463,7 @@ button.primary:hover { filter: brightness(1.15); }
   function closeDatePopup() {
     document.getElementById('date-overlay').classList.remove('open');
     document.getElementById('date-popup').classList.remove('open');
-    _datePick = { mode: null, domain: null, applyIdx: null };
+    _datePick = { mode: null, id: null, applyIdx: null };
     const clearBtn = document.getElementById('clear-date-btn');
     if (clearBtn) clearBtn.remove();
   }
@@ -469,8 +471,8 @@ button.primary:hover { filter: brightness(1.15); }
     const val = document.getElementById('date-picker-input').value;
     if (!val) { closeDatePopup(); return; }
     const ts = new Date(val + 'T12:00:00').getTime();
-    const { mode, domain, applyIdx } = _datePick;
-    const s = sites.find(s => s.domain === domain);
+    const { mode, id, applyIdx } = _datePick;
+    const s = sites.find(s => s.id === id);
     if (!s) { closeDatePopup(); return; }
     if (mode === 'visited' || mode === 'edit-visited') { s.lastVisited = ts; }
     else if (mode === 'apply') { if (!s.applied) s.applied = []; s.applied.push(ts); s.applied.sort((a, b) => b - a); }
@@ -479,10 +481,10 @@ button.primary:hover { filter: brightness(1.15); }
     syncToJsonBin();
     renderSites();
   }
-  function markVisited(domain) { openDatePopup('visited', domain, null); }
-  function unmarkVisited(domain) {
-    _datePick = { mode: 'edit-visited', domain, applyIdx: null };
-    const s = sites.find(s => s.domain === domain);
+  function markVisited(id) { openDatePopup('visited', id, null); }
+  function unmarkVisited(id) {
+    _datePick = { mode: 'edit-visited', id, applyIdx: null };
+    const s = sites.find(s => s.id === id);
     const existing = s && s.lastVisited ? new Date(s.lastVisited).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     document.getElementById('date-picker-input').value = existing;
     document.getElementById('date-popup-title').textContent = 'Update visited date';
@@ -492,7 +494,7 @@ button.primary:hover { filter: brightness(1.15); }
       clearBtn.id = 'clear-date-btn';
       clearBtn.textContent = 'Clear';
       clearBtn.onclick = () => {
-        const site = sites.find(s => s.domain === _datePick.domain);
+        const site = sites.find(s => s.id === _datePick.id);
         if (site) { site.lastVisited = null; syncToJsonBin(); renderSites(); }
         closeDatePopup();
       };
@@ -501,7 +503,7 @@ button.primary:hover { filter: brightness(1.15); }
     document.getElementById('date-overlay').classList.add('open');
     document.getElementById('date-popup').classList.add('open');
   }
-  function addApplied(domain) { openDatePopup('apply', domain, null); }
+  function addApplied(id) { openDatePopup('apply', id, null); }
   function markAllVisited() {
     const now = Date.now();
     sites.forEach(s => s.lastVisited = now);
@@ -512,10 +514,10 @@ button.primary:hover { filter: brightness(1.15); }
 
   // ── Notes modal ──────────────────────────────────────────────────────
   let _noteDomain = null;
-  function startEditNote(domain) {
-    _noteDomain = domain;
-    const s = sites.find(s => s.domain === domain);
-    document.getElementById('note-modal-title').textContent = s.domain;
+  function startEditNote(id) {
+    _noteDomain = id;
+    const s = sites.find(s => s.id === id);
+    document.getElementById('note-modal-title').textContent = s.label || s.domain;
     document.getElementById('note-modal-input').value = s.note || '';
     document.getElementById('note-overlay').classList.add('open');
     document.getElementById('note-modal').classList.add('open');
@@ -523,14 +525,14 @@ button.primary:hover { filter: brightness(1.15); }
   }
   function saveNoteModal() {
     if (!_noteDomain) return;
-    const s = sites.find(s => s.domain === _noteDomain);
+    const s = sites.find(s => s.id === _noteDomain);
     if (s) { s.note = document.getElementById('note-modal-input').value.trim(); syncToJsonBin(); renderSites(); }
     closeNoteModal();
   }
   function clearNoteModal() {
     if (!confirm('Clear all notes for this site?')) return;
     if (!_noteDomain) return;
-    const s = sites.find(s => s.domain === _noteDomain);
+    const s = sites.find(s => s.id === _noteDomain);
     if (s) { s.note = ''; syncToJsonBin(); renderSites(); }
     closeNoteModal();
   }
@@ -542,10 +544,10 @@ button.primary:hover { filter: brightness(1.15); }
 
   // ── Rename modal ─────────────────────────────────────────────────────
   let _renameDomain = null;
-  function openRenameModal(domain) {
-    _renameDomain = domain;
-    const s = sites.find(s => s.domain === domain);
-    document.getElementById('rename-modal-domain').textContent = s.full || 'https://' + domain;
+  function openRenameModal(id) {
+    _renameDomain = id;
+    const s = sites.find(s => s.id === id);
+    document.getElementById('rename-modal-domain').textContent = s.full || 'https://' + s.domain;
     document.getElementById('rename-input').value = s.label || '';
     document.getElementById('rename-overlay').classList.add('open');
     document.getElementById('rename-modal').classList.add('open');
@@ -553,18 +555,14 @@ button.primary:hover { filter: brightness(1.15); }
   }
   function saveRenameModal() {
     if (!_renameDomain) return;
-    const s = sites.find(s => s.domain === _renameDomain);
-    if (s) {
-      s.label = document.getElementById('rename-input').value.trim();
-      syncToJsonBin();
-      renderSites();
-    }
+    const s = sites.find(s => s.id === _renameDomain);
+    if (s) { s.label = document.getElementById('rename-input').value.trim(); syncToJsonBin(); renderSites(); }
     closeRenameModal();
     showToast('\u2713 Name updated');
   }
   function clearRenameModal() {
     if (!_renameDomain) return;
-    const s = sites.find(s => s.domain === _renameDomain);
+    const s = sites.find(s => s.id === _renameDomain);
     if (s) { s.label = ''; syncToJsonBin(); renderSites(); }
     closeRenameModal();
     showToast('Name reset to URL');
@@ -577,10 +575,10 @@ button.primary:hover { filter: brightness(1.15); }
 
   // ── Location modal ───────────────────────────────────────────────────
   let _locationDomain = null;
-  function openLocationModal(domain) {
-    _locationDomain = domain;
-    const s = sites.find(s => s.domain === domain);
-    document.getElementById('location-modal-title').textContent = '🌎 Location — ' + (s.label || domain);
+  function openLocationModal(id) {
+    _locationDomain = id;
+    const s = sites.find(s => s.id === id);
+    document.getElementById('location-modal-title').textContent = '🌎 Location — ' + (s.label || s.domain);
     document.getElementById('location-input').value = s.location || '';
     document.getElementById('location-overlay').classList.add('open');
     document.getElementById('location-modal').classList.add('open');
@@ -588,14 +586,14 @@ button.primary:hover { filter: brightness(1.15); }
   }
   function saveLocationModal() {
     if (!_locationDomain) return;
-    const s = sites.find(s => s.domain === _locationDomain);
+    const s = sites.find(s => s.id === _locationDomain);
     if (s) { s.location = document.getElementById('location-input').value.trim(); syncToJsonBin(); renderSites(); }
     closeLocationModal();
     showToast('\u2713 Location saved');
   }
   function clearLocationModal() {
     if (!_locationDomain) return;
-    const s = sites.find(s => s.domain === _locationDomain);
+    const s = sites.find(s => s.id === _locationDomain);
     if (s) { s.location = ''; syncToJsonBin(); renderSites(); }
     closeLocationModal();
   }
@@ -604,8 +602,8 @@ button.primary:hover { filter: brightness(1.15); }
     document.getElementById('location-modal').classList.remove('open');
     _locationDomain = null;
   }
-  function setColor(domain, color) {
-    const s = sites.find(s => s.domain === domain);
+  function setColor(id, color) {
+    const s = sites.find(s => s.id === id);
     if (!s) return;
     s.color = color;
     syncToJsonBin();
@@ -627,9 +625,15 @@ button.primary:hover { filter: brightness(1.15); }
         if (a.lastVisited && !b.lastVisited) return 1;
         return (a.addedAt || 0) - (b.addedAt || 0);
       });
+    } else if (sort === 'applied') {
+      sorted.sort((a, b) => {
+        const aDate = a.applied && a.applied.length ? Math.max(...a.applied) : 0;
+        const bDate = b.applied && b.applied.length ? Math.max(...b.applied) : 0;
+        return bDate - aDate;
+      });
     } else if (sort === 'color') {
       const order = {red:0, yellow:1, green:2, blue:3, purple:4, '':5};
-      sorted.sort((a, b) => (order[a.color||''] ?? 4) - (order[b.color||''] ?? 4));
+      sorted.sort((a, b) => (order[a.color||''] ?? 5) - (order[b.color||''] ?? 5));
     } else {
       sorted.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
     }
@@ -645,36 +649,37 @@ button.primary:hover { filter: brightness(1.15); }
       list.innerHTML = '<div class="empty-state"><strong>No sites added yet</strong>Add a career page URL above to get started.</div>';
       return;
     }
+    // ensure all sites have an id (backward compat)
+    sites.forEach(s => { if (!s.id) s.id = Date.now().toString(36) + Math.random().toString(36).slice(2,6); });
     const sorted = getSortedSites();
     list.innerHTML = sorted.map(s => {
       const faviconDomain = s.domain.split('/')[0];
-      const escapedDomain = s.domain.replace(/'/g, "\\'");
-      const bKey = btoa(s.domain).replace(/=/g,'');
+      const sid = s.id;
       const fmt = ts => new Date(ts).toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'});
       const visitedBadge = s.lastVisited
-        ? `<span class="badge badge-visited" onclick="badgeMenu('visited','${escapedDomain}',null)" title="Update or delete">&#10003; Visited ${fmt(s.lastVisited)}</span>`
+        ? `<span class="badge badge-visited" onclick="badgeMenu('visited','${sid}',null)" title="Update or delete">&#10003; Visited ${fmt(s.lastVisited)}</span>`
         : '';
       const appliedBadges = (s.applied || []).map((ts, i) =>
-        `<span class="badge badge-applied" onclick="badgeMenu('applied','${escapedDomain}',${i})" title="Update or delete">&#9733; Applied ${fmt(ts)}</span>`
+        `<span class="badge badge-applied" onclick="badgeMenu('applied','${sid}',${i})" title="Update or delete">&#9733; Applied ${fmt(ts)}</span>`
       ).join('');
-      const visitBtn = !s.lastVisited ? `<button class="action-btn" onclick="markVisited('${escapedDomain}')">&#10003; Mark visited</button>` : '';
-      const applyBtn = `<button class="action-btn apply-btn" onclick="addApplied('${escapedDomain}')">&#9733; + Applied</button>`;
-      const renameBtn = `<button class="action-btn" onclick="openRenameModal('${escapedDomain}')" title="Give this site a friendly name">&#9998; Rename</button>`;
+      const visitBtn = !s.lastVisited ? `<button class="action-btn" onclick="markVisited('${sid}')">&#10003; Mark visited</button>` : '';
+      const applyBtn = `<button class="action-btn apply-btn" onclick="addApplied('${sid}')">&#9733; + Applied</button>`;
+      const renameBtn = `<button class="action-btn" onclick="openRenameModal('${sid}')" title="Give this site a friendly name">&#9998; Rename</button>`;
       const colorClass = s.color ? 'site-color-' + s.color : 'site-color-none';
       const colors = [{val:'red',bg:'#ef4444'},{val:'yellow',bg:'#f59e0b'},{val:'green',bg:'#22c55e'},{val:'blue',bg:'#3b82f6'},{val:'purple',bg:'#a855f7'}];
       const swatches = colors.map(c =>
-        `<span class="color-swatch ${s.color === c.val ? 'active' : ''}" style="background:${c.bg}" onclick="setColor('${escapedDomain}','${c.val}')" title="${c.val}"></span>`
-      ).join('') + `<span class="color-swatch clear" onclick="setColor('${escapedDomain}','')" title="Clear color">✕</span>`;
+        `<span class="color-swatch ${s.color === c.val ? 'active' : ''}" style="background:${c.bg}" onclick="setColor('${sid}','${c.val}')" title="${c.val}"></span>`
+      ).join('') + `<span class="color-swatch clear" onclick="setColor('${sid}','')" title="Clear color">✕</span>`;
       return `<div class="site-item ${colorClass}">
         <img class="site-favicon" src="https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32" onerror="this.style.display='none'" />
         <div class="site-info">
           <a class="site-url" href="${s.full || 'https://' + s.domain}" onclick="window.open(this.href,'_blank');return false;" rel="noopener" title="${s.full || s.domain}">${s.label || s.domain}</a>
-          <div class="note-row" onclick="openLocationModal('${escapedDomain}')" style="cursor:pointer;">
+          <div class="note-row" onclick="openLocationModal('${sid}')" style="cursor:pointer;">
             ${s.location
               ? `<span class="site-note-text" title="Click to edit location">&#127758; ${s.location}</span>`
               : `<span class="site-checked" style="text-decoration:underline dotted">&#127758; + add location</span>`}
           </div>
-          <div id="note-row-${bKey}" class="note-row" onclick="startEditNote('${escapedDomain}')" style="cursor:pointer;">
+          <div class="note-row" onclick="startEditNote('${sid}')" style="cursor:pointer;">
             ${s.note
               ? `<span class="site-note-text" title="Click to edit note">&#128203; ${s.note.split('\n').map(l => l.trim()).filter(l => l).join('<br>&nbsp;&nbsp;&nbsp;')}</span>`
               : `<span class="site-checked" style="text-decoration:underline dotted">+ add note</span>`}
@@ -685,7 +690,7 @@ button.primary:hover { filter: brightness(1.15); }
             <span style="font-size:10px;color:var(--text-3);">Color:</span>${swatches}
           </div>
         </div>
-        <button class="remove-btn" onclick="removeSite('${escapedDomain}')" title="Remove site">&#x2715;</button>
+        <button class="remove-btn" onclick="removeSite('${sid}')" title="Remove site">&#x2715;</button>
       </div>`;
     }).join('');
   }
@@ -741,17 +746,17 @@ button.primary:hover { filter: brightness(1.15); }
     const rows = getSortedSites().map(s => {
       const bg = colorBg[s.color || ''] || '#ffffff';
       const border = colorBorder[s.color || ''] || '#000000';
-      return `<tr style="background:${bg};"><td style="border:2px solid ${border};padding:8px 12px;font-weight:700;font-size:13px;"><a href="${s.full||'https://'+s.domain}" style="color:#000;text-decoration:none;">${s.domain}</a></td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${fmtDate(s.lastVisited)}</td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${(s.applied||[]).map(ts=>fmtDate(ts)).join(', ')||'—'}</td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${(s.note||'').replace(/\n/g,'<br>')||'—'}</td></tr>`;
+      return `<tr style="background:${bg};"><td style="border:2px solid ${border};padding:8px 12px;font-weight:700;font-size:13px;"><a href="${s.full||'https://'+s.domain}" style="color:#000;text-decoration:none;">${s.label||s.domain}</a></td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${s.location||'—'}</td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${fmtDate(s.lastVisited)}</td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${(s.applied||[]).map(ts=>fmtDate(ts)).join(', ')||'—'}</td><td style="border:2px solid ${border};padding:8px 12px;font-size:12px;color:#000;">${(s.note||'').replace(/\n/g,'<br>')||'—'}</td></tr>`;
     }).join('');
     const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><title>Job Tracker Export — ${now}</title><style>@page{size:A4 landscape;margin:15mm;}*{box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#000;font-size:12px;margin:0;padding:20px;}h1{font-size:20px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;table-layout:fixed;}col.col-site{width:34%;}col.col-visited{width:14%;}col.col-applied{width:14%;}col.col-notes{width:38%;}th{background:#1a3a5c;color:#fff;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border:2px solid #000;}td{color:#000;padding:7px 10px;font-size:11px;word-break:break-word;vertical-align:top;}tr{-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body><h1>Job Opportunity Tracker</h1><p style="font-size:11px;margin-bottom:20px;">by Andrew Blyskosz &middot; Exported ${now} &middot; ${sites.length} sites</p><table><colgroup><col class="col-site"/><col class="col-visited"/><col class="col-applied"/><col class="col-notes"/></colgroup><thead><tr><th>Career Page</th><th>Last Visited</th><th>Applied</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    win.document.write(`<!DOCTYPE html><html><head><title>Job Tracker Export — ${now}</title><style>@page{size:A4 landscape;margin:15mm;}*{box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#000;font-size:12px;margin:0;padding:20px;}h1{font-size:20px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;table-layout:fixed;}col.col-site{width:26%;}col.col-loc{width:16%;}col.col-visited{width:13%;}col.col-applied{width:13%;}col.col-notes{width:32%;}th{background:#1a3a5c;color:#fff;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border:2px solid #000;}td{color:#000;padding:7px 10px;font-size:11px;word-break:break-word;vertical-align:top;}tr{-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body><h1>Job Opportunity Tracker</h1><p style="font-size:11px;margin-bottom:20px;">by Andrew Blyskosz &middot; Exported ${now} &middot; ${sites.length} sites</p><table><colgroup><col class="col-site"/><col class="col-loc"/><col class="col-visited"/><col class="col-applied"/><col class="col-notes"/></colgroup><thead><tr><th>Career Page</th><th>Location</th><th>Last Visited</th><th>Applied</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 400);
   }
 
   function exportCSV() {
-    const headers = ['Career Page','Full URL','Color','Last Visited','Applied Dates','Notes'];
-    const rows = getSortedSites().map(s => [s.domain, s.full||'https://'+s.domain, colorLabel(s.color||''), fmtDate(s.lastVisited), (s.applied||[]).map(ts=>fmtDate(ts)).join(' | ')||'', (s.note||'').replace(/\n/g,' | ')].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
+    const headers = ['Career Page','Full URL','Location','Color','Last Visited','Applied Dates','Notes'];
+    const rows = getSortedSites().map(s => [s.label||s.domain, s.full||'https://'+s.domain, s.location||'', colorLabel(s.color||''), fmtDate(s.lastVisited), (s.applied||[]).map(ts=>fmtDate(ts)).join(' | ')||'', (s.note||'').replace(/\n/g,' | ')].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
